@@ -1,0 +1,4 @@
+Codex file I/O test
+workspace=F:\starven
+date=2026-04-05
+status=write_ok

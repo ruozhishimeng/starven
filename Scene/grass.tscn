@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://ddkh4xhv0c6n5"]
+
+[ext_resource type="Texture2D" uid="uid://dqx3ny1xgg8kv" path="res://Asset/Level/TreeAndGrass.png" id="1_j210m"]
+[ext_resource type="Script" uid="uid://cormnj827g8s2" path="res://Script/grass.gd" id="1_mo8jh"]
+[ext_resource type="Script" uid="uid://ciwcetn3pxt5t" path="res://Script/grass_random.gd" id="3_pehwq"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ovh6s"]
+size = Vector2(39, 10)
+
+[node name="Grass" type="Area2D" unique_id=2071199388]
+y_sort_enabled = true
+collision_layer = 8
+collision_mask = 6
+script = ExtResource("1_mo8jh")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=482423467]
+shape = SubResource("RectangleShape2D_ovh6s")
+
+[node name="grass_1_back" type="Sprite2D" parent="." unique_id=648810797]
+position = Vector2(0, -15)
+texture = ExtResource("1_j210m")
+region_enabled = true
+region_rect = Rect2(0, 96, 48, 32)
+
+[node name="grass_1" type="Sprite2D" parent="." unique_id=1505975267]
+position = Vector2(-0.036727905, -0.40864563)
+texture = ExtResource("1_j210m")
+offset = Vector2(0, -10)
+region_enabled = true
+region_rect = Rect2(0, 0, 48, 32)
+script = ExtResource("3_pehwq")
+randomRegions = Array[Rect2]([Rect2(0, 0, 48, 32), Rect2(0, 32, 48, 32), Rect2(0, 64, 48, 32), Rect2(0, 0, 48, 32), Rect2(0, 0, 48, 32)])

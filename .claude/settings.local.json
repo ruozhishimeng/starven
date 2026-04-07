@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx:*)",
+      "Bash(node __TRACKED_VAR__/.claude/get-shit-done/bin/gsd-tools.cjs commit 'docs: initialize project' --files .planning/PROJECT.md)",
+      "Bash(node __TRACKED_VAR__/.claude/get-shit-done/bin/gsd-tools.cjs commit 'chore: add project config' --files .planning/config.json)",
+      "Bash(node __TRACKED_VAR__/.claude/get-shit-done/bin/gsd-tools.cjs commit 'docs: research ecosystem' --files '.planning/research/*.md')",
+      "Bash(node __TRACKED_VAR__/.claude/get-shit-done/bin/gsd-tools.cjs commit 'docs: define v1 requirements' --files .planning/REQUIREMENTS.md)",
+      "Bash(node __TRACKED_VAR__/.claude/get-shit-done/bin/gsd-tools.cjs generate-claude-md --output CLAUDE.md)",
+      "Bash(node __TRACKED_VAR__/.claude/get-shit-done/bin/gsd-tools.cjs commit 'docs: create roadmap \\(5 phases\\)' --files .planning/ROADMAP.md .planning/STATE.md .planning/REQUIREMENTS.md CLAUDE.md)",
+      "Bash(python -c \"from rembg import remove; print\\('rembg OK'\\)\")",
+      "Bash(python remove_bg.py removebg/stones.png Asset/Level/test_stones.png)",
+      "Bash(python remove_bg.py removebg/stones.png Asset/Level)",
+      "Bash(python remove_bg.py \"removebg/stones-1.png.png\" Asset/Level)",
+      "Bash(python -c ':*)"
+    ]
+  }
+}
