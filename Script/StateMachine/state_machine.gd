@@ -20,8 +20,17 @@ var currentState: State
 ## 所有状态的字典 {状态名字: 状态节点}
 var states: Dictionary = {}
 
+## 玩家专用可选节点引用；敌人场景没有这些节点时保持 null 即可
+var anim: AnimatedSprite2D = null
+var attack_hitbox: Area2D = null
+var attack_up: CollisionShape2D = null
+var attack_down: CollisionShape2D = null
+var attack_left: CollisionShape2D = null
+var attack_right: CollisionShape2D = null
+
 ## 初始化状态机（由角色根节点在 _ready() 中调用）
 func init() -> void:
+	_resolve_optional_nodes()
 	_register_states()
 	if not states.is_empty():
 		currentState = get_child(0)
@@ -111,3 +120,97 @@ func get_current_state_name() -> String:
 	if currentState != null:
 		return currentState.name
 	return ""
+
+
+## ============================================
+## 玩家节点辅助方法
+## ============================================
+
+func has_attack_nodes() -> bool:
+	return (
+		attack_hitbox != null
+		and attack_up != null
+		and attack_down != null
+		and attack_left != null
+		and attack_right != null
+	)
+
+
+func play_directional_animation(direction: Vector2, prefix: String) -> void:
+	if anim == null:
+		return
+
+	anim.play(prefix + "_" + _direction_to_suffix(direction))
+
+
+func disable_all_attack_hitboxes() -> void:
+	if attack_hitbox != null:
+		attack_hitbox.monitoring = false
+
+	_set_collision_shape_enabled(attack_up, false)
+	_set_collision_shape_enabled(attack_down, false)
+	_set_collision_shape_enabled(attack_left, false)
+	_set_collision_shape_enabled(attack_right, false)
+
+
+func set_attack_hitbox_for_direction(direction: Vector2, enabled: bool) -> void:
+	disable_all_attack_hitboxes()
+	if not enabled:
+		return
+
+	var shape := _get_attack_shape_for_direction(direction)
+	if shape == null:
+		return
+
+	if attack_hitbox != null:
+		attack_hitbox.monitoring = true
+	_set_collision_shape_enabled(shape, true)
+
+
+func _resolve_optional_nodes() -> void:
+	var host := get_parent()
+	if host == null:
+		return
+
+	anim = host.get_node_or_null("AnimatedSprite2D") as AnimatedSprite2D
+	attack_hitbox = host.get_node_or_null("AttackHitBox") as Area2D
+	attack_up = host.get_node_or_null("AttackHitBox/CollisionShape2Dup") as CollisionShape2D
+	attack_down = host.get_node_or_null("AttackHitBox/CollisionShape2Ddown") as CollisionShape2D
+	attack_left = host.get_node_or_null("AttackHitBox/CollisionShape2Dleft") as CollisionShape2D
+	attack_right = host.get_node_or_null("AttackHitBox/CollisionShape2Dright") as CollisionShape2D
+
+	disable_all_attack_hitboxes()
+
+
+func _get_attack_shape_for_direction(direction: Vector2) -> CollisionShape2D:
+	var suffix := _direction_to_suffix(direction)
+	match suffix:
+		"up":
+			return attack_up
+		"down":
+			return attack_down
+		"left":
+			return attack_left
+		"right":
+			return attack_right
+		_:
+			return attack_down
+
+
+func _set_collision_shape_enabled(shape: CollisionShape2D, enabled: bool) -> void:
+	if shape == null:
+		return
+	shape.disabled = not enabled
+
+
+func _direction_to_suffix(direction: Vector2) -> String:
+	if direction.y > 0:
+		return "down"
+	elif direction.y < 0:
+		return "up"
+	elif direction.x > 0:
+		return "right"
+	elif direction.x < 0:
+		return "left"
+	else:
+		return "down"

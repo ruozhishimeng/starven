@@ -14,6 +14,7 @@ extends Node2D
 @export var world_seed: int = 1
 @export var chunk_size: Vector2i = Vector2i(1024, 1024)  ## chunk 像素尺寸
 @export var active_chunk_radius: int = 2                 ## 激活半径（2 = 5x5 chunk）
+@export var enable_debug_logs: bool = false              ## 是否输出 chunk 调试日志
 
 ## ============================================
 ## 场景路径
@@ -21,6 +22,11 @@ extends Node2D
 
 @export var grass_scene_path := "res://Scene/grass.tscn"
 @export var tree_scene_path := "res://Scene/Tree.tscn"
+@export var stone_scene_path := "res://Scene/Stone.tscn"
+
+const TREE_VARIANT_COUNT: int = 5
+const GRASS_VARIANT_COUNT: int = 5
+const STONE_VARIANT_COUNT: int = 5
 
 ## ============================================
 ## 树生成规则
@@ -39,6 +45,14 @@ extends Node2D
 @export var grass_min_spacing: float = 20.0   ## 草之间最小间距
 @export var grass_scale_range := Vector2(0.9, 1.2)
 @export var grass_noise_threshold: float = -1.0 ## 草密度噪声阈值（-1=不过滤）
+## ============================================
+## 石头生成规则
+## ============================================
+
+@export var stone_count_per_chunk: int = 24     ## 每 chunk 目标石头数量
+@export var stone_min_spacing: float = 60.0   ## 石头之间最小间距
+@export var stone_scale_range := Vector2(0.9, 1.25)
+@export var stone_noise_threshold: float = -1.0 ## 石头密度噪声阈值（-1=不过滤）
 
 ## ============================================
 ## 地形限制（可选）
@@ -66,15 +80,26 @@ var _last_player_chunk: Vector2i = Vector2i(-99999, -99999)
 ## 噪声生成器（用于密度控制）
 var _noise: FastNoiseLite = FastNoiseLite.new()
 
+## 高频访问缓存，避免每帧/每次生成都重复查找
+var _player_cache: Node2D = null
+var _terrain_tile_map_cache: TileMap = null
+var _terrain_tile_map_cache_path: NodePath = NodePath("")
+var _grass_scene_cache: PackedScene = null
+var _tree_scene_cache: PackedScene = null
+var _stone_scene_cache: PackedScene = null
+
 
 ## ============================================
 ## 生命周期
 ## ============================================
 
 func _ready() -> void:
+	_rng.seed = world_seed
 	_noise.seed = world_seed
 	_noise.frequency = 0.01
 	_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	_refresh_scene_cache()
+	_resolve_terrain_tile_map()
 
 	if not Engine.is_editor_hint():
 		_initial_spawn()
@@ -103,6 +128,8 @@ func regenerate_with_new_seed() -> void:
 	world_seed = randi()
 	_rng.seed = world_seed
 	_noise.seed = world_seed
+	_refresh_scene_cache()
+	_resolve_terrain_tile_map()
 	_clear_all_chunks()
 	_initial_spawn()
 
@@ -139,9 +166,9 @@ func _initial_spawn() -> void:
 	if player == null:
 		push_error("FoliageSpawner: player not found!")
 		return
-	print("FoliageSpawner: player found at ", player.global_position)
+	_debug_log("FoliageSpawner: player found at ", player.global_position)
 	_last_player_chunk = world_to_chunk(player.global_position)
-	print("FoliageSpawner: initial chunk = ", _last_player_chunk)
+	_debug_log("FoliageSpawner: initial chunk = ", _last_player_chunk)
 	_update_chunks_around_player(player.global_position)
 
 
@@ -182,22 +209,28 @@ func _generate_chunk_data(chunk_coord: Vector2i) -> Dictionary:
 	chunk_rng.seed = _get_chunk_seed(chunk_coord)
 
 	var bounds := get_chunk_bounds(chunk_coord)
-	print("Generating chunk ", chunk_coord, " bounds=", bounds)
+	_debug_log("Generating chunk ", chunk_coord, " bounds=", bounds)
 
 	var trees: Array[Dictionary] = []
 	var grass: Array[Dictionary] = []
+	var stone: Array[Dictionary] = []
 
 	## 生成树
 	trees = _generate_trees_for_chunk(chunk_rng, bounds)
-	print("  trees generated: ", trees.size())
+	_debug_log("  trees generated: ", trees.size())
 
 	## 生成草
 	grass = _generate_grass_for_chunk(chunk_rng, bounds)
-	print("  grass generated: ", grass.size())
+	_debug_log("  grass generated: ", grass.size())
+	
+	## 生成石头
+	stone = _generate_stone_for_chunk(chunk_rng, bounds)
+	_debug_log("  stone generated: ", stone.size())
 
 	return {
 		"trees": trees,
-		"grass": grass
+		"grass": grass,
+		"stone": stone
 	}
 
 
@@ -234,12 +267,50 @@ func _generate_trees_for_chunk(chunk_rng: RandomNumberGenerator, bounds: Rect2) 
 			result.append({
 				"pos": candidate,
 				"scale": chunk_rng.randf_range(tree_scale_range.x, tree_scale_range.y),
-				"variant": chunk_rng.randi() % 4  ## 4 种树外观
+				"variant": chunk_rng.randi() % TREE_VARIANT_COUNT
 			})
 			break
 
 	return result
 
+func _generate_stone_for_chunk(chunk_rng: RandomNumberGenerator, bounds: Rect2) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	var placed: Array[Vector2] = []
+
+	var jitter: float = chunk_size.x / 4.0  ## 网格抖动幅度
+
+	for i in stone_count_per_chunk:
+		var attempts := 30
+		for _attempt in attempts:
+			## 网格 + 抖动定位
+			var grid_x := (i % 4) * (chunk_size.x / 4.0)
+			var grid_y := (i / 4) * (chunk_size.y / 4.0)
+			var jitter_x := chunk_rng.randf_range(-jitter, jitter)
+			var jitter_y := chunk_rng.randf_range(-jitter, jitter)
+			var candidate := Vector2(bounds.position.x + grid_x + jitter_x, bounds.position.y + grid_y + jitter_y)
+
+			## 噪声阈值检测
+			var noise_val := _noise.get_noise_2d(candidate.x * 0.005, candidate.y * 0.005)
+			if noise_val < stone_noise_threshold:
+				continue
+
+			## 间距检测
+			if _is_too_close(candidate, placed, stone_min_spacing):
+				continue
+
+			## 地形检测（可选）
+			if require_terrain and not _is_valid_terrain(candidate):
+				continue
+
+			placed.append(candidate)
+			result.append({
+				"pos": candidate,
+				"scale": chunk_rng.randf_range(stone_scale_range.x, stone_scale_range.y),
+				"variant": chunk_rng.randi() % STONE_VARIANT_COUNT
+			})
+			break
+
+	return result
 
 func _generate_grass_for_chunk(chunk_rng: RandomNumberGenerator, bounds: Rect2) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
@@ -247,15 +318,12 @@ func _generate_grass_for_chunk(chunk_rng: RandomNumberGenerator, bounds: Rect2) 
 
 	## 先生成 patch 中心点（噪声驱动）
 	var patch_centers: Array[Vector2] = []
-	var patch_jitter := chunk_size.x / 2.0
 	for i in 4:
 		var cx := bounds.position.x + chunk_rng.randf_range(0, chunk_size.x)
 		var cy := bounds.position.y + chunk_rng.randf_range(0, chunk_size.y)
 		var noise_at := _noise.get_noise_2d(cx * 0.008, cy * 0.008)
 		if noise_at > 0.3:  ## 只在一定密度区域生成 patch
 			patch_centers.append(Vector2(cx, cy))
-
-	var jitter: float = chunk_size.x / 8.0  ## 更密集的抖动
 
 	for i in grass_count_per_chunk:
 		var attempts := 20
@@ -290,7 +358,7 @@ func _generate_grass_for_chunk(chunk_rng: RandomNumberGenerator, bounds: Rect2) 
 			result.append({
 				"pos": candidate,
 				"scale": chunk_rng.randf_range(grass_scale_range.x, grass_scale_range.y),
-				"variant": chunk_rng.randi() % 5  ## 5 种草外观
+				"variant": chunk_rng.randi() % GRASS_VARIANT_COUNT
 			})
 			break
 
@@ -302,15 +370,27 @@ func _generate_grass_for_chunk(chunk_rng: RandomNumberGenerator, bounds: Rect2) 
 ## ============================================
 
 func _spawn_chunk(chunk_coord: Vector2i, chunk_data: Dictionary) -> void:
-	var grass_scene: PackedScene = _load_scene(grass_scene_path)
-	var tree_scene: PackedScene = _load_scene(tree_scene_path)
+	var grass_scene: PackedScene = _grass_scene_cache
+	var tree_scene: PackedScene = _tree_scene_cache
+	var stone_scene: PackedScene = _stone_scene_cache
 
 	if grass_scene == null:
 		push_warning("grass_scene is null: " + grass_scene_path)
 	if tree_scene == null:
 		push_warning("tree_scene is null: " + tree_scene_path)
+	if stone_scene == null:
+		push_warning("stone_scene is null: " + stone_scene_path)
 
-	print("Spawning chunk ", chunk_coord, " - trees: ", chunk_data["trees"].size(), " grass: ", chunk_data["grass"].size())
+	_debug_log(
+		"Spawning chunk ",
+		chunk_coord,
+		" - trees: ",
+		chunk_data["trees"].size(),
+		" grass: ",
+		chunk_data["grass"].size(),
+		" stone: ",
+		chunk_data["stone"].size()
+	)
 
 	var nodes: Array[Node2D] = []
 
@@ -330,6 +410,15 @@ func _spawn_chunk(chunk_coord: Vector2i, chunk_data: Dictionary) -> void:
 			var instance: Node2D = _instantiate_scene(grass_scene, grass_info["pos"], grass_info["scale"])
 			if instance != null:
 				_set_grass_variant(instance, grass_info["variant"])
+				add_child(instance)
+				nodes.append(instance)
+
+	## 生成石头节点
+	if stone_scene != null:
+		for stone_info in chunk_data["stone"]:
+			var instance: Node2D = _instantiate_scene(stone_scene, stone_info["pos"], stone_info["scale"])
+			if instance != null:
+				_set_stone_variant(instance, stone_info["variant"])
 				add_child(instance)
 				nodes.append(instance)
 
@@ -386,12 +475,16 @@ func _is_in_any_patch(point: Vector2, patch_centers: Array[Vector2], patch_radiu
 
 
 func _get_player() -> Node2D:
+	if is_instance_valid(_player_cache):
+		return _player_cache
+
 	var tree := get_tree()
 	if tree == null:
 		return null
 	var player := tree.get_first_node_in_group("player")
 	if player is Node2D:
-		return player as Node2D
+		_player_cache = player as Node2D
+		return _player_cache
 	return null
 
 
@@ -407,6 +500,32 @@ func _load_scene(path: String) -> PackedScene:
 	return null
 
 
+func _refresh_scene_cache() -> void:
+	_grass_scene_cache = _load_scene(grass_scene_path)
+	_tree_scene_cache = _load_scene(tree_scene_path)
+	_stone_scene_cache = _load_scene(stone_scene_path)
+
+
+func _resolve_terrain_tile_map() -> TileMap:
+	if is_instance_valid(_terrain_tile_map_cache) and terrain_tile_map_path == _terrain_tile_map_cache_path:
+		return _terrain_tile_map_cache
+
+	if terrain_tile_map_path.is_empty():
+		_terrain_tile_map_cache = null
+		_terrain_tile_map_cache_path = NodePath("")
+		return null
+
+	var tilemap := get_node_or_null(terrain_tile_map_path)
+	if tilemap is TileMap:
+		_terrain_tile_map_cache = tilemap as TileMap
+		_terrain_tile_map_cache_path = terrain_tile_map_path
+		return _terrain_tile_map_cache
+
+	_terrain_tile_map_cache = null
+	_terrain_tile_map_cache_path = terrain_tile_map_path
+	return null
+
+
 ## ============================================
 ## 地形验证（可选）
 ## ============================================
@@ -418,12 +537,12 @@ func _is_valid_terrain(pos: Vector2) -> bool:
 	if terrain_tile_map_path.is_empty():
 		return true
 
-	var tilemap: TileMap = get_node_or_null(terrain_tile_map_path)
+	var tilemap: TileMap = _resolve_terrain_tile_map()
 	if tilemap == null:
 		return true
 
 	## 检查该位置是否有瓦片
-	var tile_pos := tilemap.local_to_map(pos)
+	var tile_pos := tilemap.local_to_map(tilemap.to_local(pos))
 	var source_id := tilemap.get_cell_source_id(0, tile_pos)
 	return source_id >= 0
 
@@ -438,9 +557,29 @@ func _set_tree_variant(node: Node2D, variant: int) -> void:
 	if sprite != null and sprite.has_method("set_variant"):
 		sprite.set_variant(variant)
 
+func _set_stone_variant(node: Node2D, variant: int) -> void:
+	## Stone.tscn 中 TreeAndGrass Sprite2D 挂载了 random_tree.gd
+	var sprite: Sprite2D = node.get_node_or_null("TreeAndGrass")
+	if sprite != null and sprite.has_method("set_variant"):
+		sprite.set_variant(variant)
 
 func _set_grass_variant(node: Node2D, variant: int) -> void:
 	## grass.tscn 中 grass_1 Sprite2D 挂载了 grass_random.gd
 	var sprite: Sprite2D = node.get_node_or_null("grass_1")
 	if sprite != null and sprite.has_method("set_variant"):
 		sprite.set_variant(variant)
+
+
+func _debug_log(arg1 = null, arg2 = null, arg3 = null, arg4 = null, arg5 = null, arg6 = null, arg7 = null, arg8 = null) -> void:
+	if not enable_debug_logs:
+		return
+
+	var parts: Array = [arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8]
+	var message_parts: Array[String] = []
+	for part in parts:
+		if part == null:
+			continue
+		message_parts.append(str(part))
+
+	if not message_parts.is_empty():
+		print("".join(message_parts))

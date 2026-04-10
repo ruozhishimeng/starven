@@ -6,13 +6,18 @@ extends BasicCharacter
 
 @export var detect_radius := 300.0   ## 索敌半径（触发追击）
 @export var lose_radius := 1000.0     ## 丢失半径（停止追击），需 >= detect_radius
+@export var chase_contact_buffer := 4.0 ## 追击停距缓冲，避免贴着玩家持续顶住
 
 var is_chasing := false              ## 当前是否处于追击状态
 
 @onready var anim: AnimatedSprite2D = $AnimatedSprite2D
+@onready var body_collision_shape: CollisionShape2D = $CollisionShape2D
+
+var _body_collision_radius := 0.0
 
 func _ready() -> void:
 	SPEED = 75.0
+	_body_collision_radius = _get_collision_radius_from_shape(body_collision_shape)
 	super._ready()
 
 
@@ -76,3 +81,27 @@ func start_chase() -> void:
 ## 停止追击
 func stop_chase() -> void:
 	is_chasing = false
+
+
+## 获取追击停距（双方本体半径 + 额外缓冲）
+func get_chase_stop_distance(target: Node2D) -> float:
+	return _body_collision_radius + _get_target_collision_radius(target) + chase_contact_buffer
+
+
+func _get_target_collision_radius(target: Node2D) -> float:
+	if target == null:
+		return 0.0
+
+	var target_collision_shape := target.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	return _get_collision_radius_from_shape(target_collision_shape)
+
+
+func _get_collision_radius_from_shape(collision_shape: CollisionShape2D) -> float:
+	if collision_shape == null or collision_shape.shape == null:
+		return 0.0
+
+	var circle_shape := collision_shape.shape as CircleShape2D
+	if circle_shape == null:
+		return 0.0
+
+	return circle_shape.radius

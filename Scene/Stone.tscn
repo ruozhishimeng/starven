@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://bxq15iw7a13ju"]
+
+[ext_resource type="Texture2D" uid="uid://cyqv25hv0ncib" path="res://Asset/Level/stones-1.png.png" id="1_e0den"]
+[ext_resource type="Script" uid="uid://c0mw1u5pqcyf3" path="res://Script/random_tree.gd" id="2_1tb32"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_1tb32"]
+radius = 13.0
+height = 52.0
+
+[node name="StaticBody2D" type="StaticBody2D" unique_id=896640566]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=973859917]
+rotation = 1.5707964
+shape = SubResource("CapsuleShape2D_1tb32")
+
+[node name="TreeAndGrass" type="Sprite2D" parent="." unique_id=834224662]
+position = Vector2(-2, -31)
+texture = ExtResource("1_e0den")
+region_enabled = true
+region_rect = Rect2(48, 0, 64, 96)
+script = ExtResource("2_1tb32")
+randomRegions = Array[Rect2]([Rect2(48, 0, 64, 96), Rect2(112, 0, 64, 96), Rect2(176, 0, 64, 96), Rect2(240, 0, 64, 96), Rect2(304, 0, 64, 96)])

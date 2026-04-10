@@ -24,3 +24,8 @@ func PhysicsProcess(delta: float) -> void:
 			character.FRICTION * delta
 		)
 		character.move_and_slide()
+
+
+func HandleInput(event: InputEvent) -> void:
+	if event.is_action_pressed("attack") and state_machine.can_change_to("attack"):
+		state_machine.change_state("attack")

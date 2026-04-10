@@ -6,9 +6,6 @@ extends BasicCharacter
 
 const INPUT_DEADZONE := 0.2
 
-## 动画节点引用
-@onready var anim: AnimatedSprite2D = $AnimatedSprite2D
-
 
 func _ready() -> void:
 	add_to_group("player")
@@ -27,21 +24,11 @@ func get_input_direction() -> Vector2:
 
 ## 播放动画
 func play_animation(direction: Vector2, prefix: String) -> void:
-	if anim == null:
-		push_error("anim is null")
+	if state_machine == null:
+		push_error("state_machine is null")
 		return
-	var suffix: String
-	if direction.y > 0:
-		suffix = "down"
-	elif direction.y < 0:
-		suffix = "up"
-	elif direction.x > 0:
-		suffix = "right"
-	elif direction.x < 0:
-		suffix = "left"
-	else:
-		suffix = "down"
-	anim.play(prefix + "_" + suffix)
+
+	state_machine.play_directional_animation(direction, prefix)
 
 
 ## ============================================

@@ -516,10 +516,9 @@ modulate = Color(1, 1, 1, 0.49803922)
 texture = ExtResource("4_eel2s")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1704235400]
-position = Vector2(0, -20)
 sprite_frames = SubResource("SpriteFrames_awr48")
 animation = &"idle_down"
-offset = Vector2(0, -20)
+offset = Vector2(0, -40)
 
 [node name="StateMachine" type="Node" parent="." unique_id=1888160577]
 script = ExtResource("5_picn5")
