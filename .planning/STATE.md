@@ -12,8 +12,8 @@
 
 ## Current Position
 
-**Phase:** Not started
-**Current focus:** Awaiting roadmap approval
+**Phase:** 1
+**Current focus:** Context gathered — ready for planning
 
 ### Phase Progress
 
