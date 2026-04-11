@@ -761,3 +761,5 @@ position = Vector2(-9, -16)
 rotation = 1.5707964
 shape = SubResource("ConvexPolygonShape2D_ij4jb")
 disabled = true
+
+[connection signal="area_entered" from="AttackHitBox" to="StateMachine/attack" method="_on_attack_hit_box_area_entered"]

@@ -94,3 +94,7 @@ func _sync_hitbox_for_current_frame() -> void:
 
 	_hitbox_active = should_enable
 	state_machine.set_attack_hitbox_for_direction(_attack_dir, _hitbox_active)
+
+
+func _on_attack_hit_box_area_entered(area: Area2D) -> void:
+	print(area.get_parent())# Replace with function body.
