@@ -14,6 +14,7 @@ var _attack_animation: StringName = &""
 var _hitbox_active: bool = false
 var _anim_finished_callable: Callable
 var _frame_changed_callable: Callable
+var _hit_target_ids: Dictionary = {}
 
 
 func Ready() -> void:
@@ -25,6 +26,7 @@ func Enter() -> void:
 	_attack_dir = character.facing_dir
 	_attack_animation = &""
 	_hitbox_active = false
+	_hit_target_ids.clear()
 	character.velocity = Vector2.ZERO
 
 	state_machine.disable_all_attack_hitboxes()
@@ -46,6 +48,7 @@ func Enter() -> void:
 
 func Exit() -> void:
 	state_machine.disable_all_attack_hitboxes()
+	_hit_target_ids.clear()
 
 	if state_machine.anim != null and state_machine.anim.animation_finished.is_connected(_anim_finished_callable):
 		state_machine.anim.animation_finished.disconnect(_anim_finished_callable)
@@ -97,4 +100,28 @@ func _sync_hitbox_for_current_frame() -> void:
 
 
 func _on_attack_hit_box_area_entered(area: Area2D) -> void:
-	print(area.get_parent())# Replace with function body.
+	var attacker := character as BasicCharacter
+	if attacker == null:
+		return
+
+	var target := _resolve_damage_target(area)
+	if target == null or target == attacker:
+		return
+
+	var target_id := target.get_instance_id()
+	if _hit_target_ids.has(target_id):
+		return
+
+	_hit_target_ids[target_id] = true
+	target.receive_attack(attacker.get_attack_power(), attacker)
+
+
+func _resolve_damage_target(area: Area2D) -> BasicCharacter:
+	var current: Node = area
+	while current != null:
+		var target := current as BasicCharacter
+		if target != null:
+			return target
+		current = current.get_parent()
+
+	return null

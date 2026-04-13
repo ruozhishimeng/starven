@@ -27,6 +27,9 @@ var attack_up: CollisionShape2D = null
 var attack_down: CollisionShape2D = null
 var attack_left: CollisionShape2D = null
 var attack_right: CollisionShape2D = null
+var body_collision_shape: CollisionShape2D = null
+var damage_receiver_area: Area2D = null
+var damage_receiver_shape: CollisionShape2D = null
 
 ## 初始化状态机（由角色根节点在 _ready() 中调用）
 func init() -> void:
@@ -137,10 +140,24 @@ func has_attack_nodes() -> bool:
 
 
 func play_directional_animation(direction: Vector2, prefix: String) -> void:
-	if anim == null:
-		return
+	play_animation_with_fallback(prefix, direction)
 
-	anim.play(prefix + "_" + _direction_to_suffix(direction))
+
+func play_animation_with_fallback(prefix: String, direction: Vector2) -> bool:
+	if anim == null or anim.sprite_frames == null:
+		return false
+
+	var directional_name := StringName(prefix + "_" + _direction_to_suffix(direction))
+	if anim.sprite_frames.has_animation(directional_name):
+		anim.play(directional_name)
+		return true
+
+	var plain_name := StringName(prefix)
+	if anim.sprite_frames.has_animation(plain_name):
+		anim.play(plain_name)
+		return true
+
+	return false
 
 
 func disable_all_attack_hitboxes() -> void:
@@ -167,6 +184,17 @@ func set_attack_hitbox_for_direction(direction: Vector2, enabled: bool) -> void:
 	_set_collision_shape_enabled(shape, true)
 
 
+func disable_character_collision() -> void:
+	_set_collision_shape_enabled_deferred(body_collision_shape, false)
+
+
+func disable_damage_receiver() -> void:
+	if damage_receiver_area != null:
+		damage_receiver_area.set_deferred("monitoring", false)
+		damage_receiver_area.set_deferred("monitorable", false)
+	_set_collision_shape_enabled_deferred(damage_receiver_shape, false)
+
+
 func _resolve_optional_nodes() -> void:
 	var host := get_parent()
 	if host == null:
@@ -178,6 +206,9 @@ func _resolve_optional_nodes() -> void:
 	attack_down = host.get_node_or_null("AttackHitBox/CollisionShape2Ddown") as CollisionShape2D
 	attack_left = host.get_node_or_null("AttackHitBox/CollisionShape2Dleft") as CollisionShape2D
 	attack_right = host.get_node_or_null("AttackHitBox/CollisionShape2Dright") as CollisionShape2D
+	body_collision_shape = host.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	damage_receiver_area = host.get_node_or_null("Area2D_Body") as Area2D
+	damage_receiver_shape = host.get_node_or_null("Area2D_Body/CollisionShape2D") as CollisionShape2D
 
 	disable_all_attack_hitboxes()
 
@@ -201,6 +232,12 @@ func _set_collision_shape_enabled(shape: CollisionShape2D, enabled: bool) -> voi
 	if shape == null:
 		return
 	shape.disabled = not enabled
+
+
+func _set_collision_shape_enabled_deferred(shape: CollisionShape2D, enabled: bool) -> void:
+	if shape == null:
+		return
+	shape.set_deferred("disabled", not enabled)
 
 
 func _direction_to_suffix(direction: Vector2) -> String:

@@ -1,0 +1,50 @@
+[gd_resource type="Theme" format=3 uid="uid://cgb0eapbsctxm"]
+
+[ext_resource type="FontFile" uid="uid://dshek34jars8s" path="res://zpix.ttf" id="1_0kpyp"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0kpyp"]
+bg_color = Color(0.5333529, 0.3729538, 0.20364359, 1)
+corner_radius_top_left = 15
+corner_radius_top_right = 15
+corner_radius_bottom_right = 15
+corner_radius_bottom_left = 15
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_rli7q"]
+bg_color = Color(0.2556702, 0.17076781, 0.08172387, 1)
+corner_radius_top_left = 15
+corner_radius_top_right = 15
+corner_radius_bottom_right = 15
+corner_radius_bottom_left = 15
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3tvok"]
+bg_color = Color(0.19833034, 0.12591136, 0.0526283, 1)
+corner_radius_top_left = 15
+corner_radius_top_right = 15
+corner_radius_bottom_right = 15
+corner_radius_bottom_left = 15
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_03brr"]
+bg_color = Color(0.13464907, 0.1346491, 0.13464904, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xlvu8"]
+bg_color = Color(0.8509804, 0, 0, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[resource]
+Button/font_sizes/font_size = 32
+Button/fonts/font = ExtResource("1_0kpyp")
+Button/styles/hover = SubResource("StyleBoxFlat_0kpyp")
+Button/styles/normal = SubResource("StyleBoxFlat_rli7q")
+Button/styles/pressed = SubResource("StyleBoxFlat_3tvok")
+Label/colors/font_color = Color(0.5806368, 0.8414142, 0.6527404, 1)
+Label/font_sizes/font_size = 100
+Label/fonts/font = ExtResource("1_0kpyp")
+ProgressBar/styles/background = SubResource("StyleBoxFlat_03brr")
+ProgressBar/styles/fill = SubResource("StyleBoxFlat_xlvu8")

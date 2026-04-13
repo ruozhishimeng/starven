@@ -7,6 +7,7 @@
 [ext_resource type="Texture2D" uid="uid://dqx3ny1xgg8kv" path="res://Asset/Level/TreeAndGrass.png" id="5_4lktk"]
 [ext_resource type="PackedScene" uid="uid://d14q36gjpnmo8" path="res://Scene/enemy1.tscn" id="7_0ll8g"]
 [ext_resource type="Script" uid="uid://doojo3rv4fs7u" path="res://Script/foliage_spawner.gd" id="8_bhs6n"]
+[ext_resource type="PackedScene" uid="uid://ba4yxi6uqhle2" path="res://Scene/game_ui.tscn" id="8_lqnm3"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_w3ro1"]
 texture = ExtResource("1_djmwe")
@@ -787,6 +788,9 @@ script = ExtResource("4_4lktk")
 
 [node name="player" parent="Level" unique_id=1888865970 instance=ExtResource("2_i4ygs")]
 collision_mask = 5
+max_hp = 1
 
 [node name="Enemy" parent="Level" unique_id=1010877537 instance=ExtResource("7_0ll8g")]
 position = Vector2(275, 247)
+
+[node name="Game_UI" parent="." unique_id=325948807 instance=ExtResource("8_lqnm3")]

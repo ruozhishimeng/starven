@@ -109,14 +109,20 @@ state_machine.change_state("Idle")   # ❌ 找不到
 
 职责：
 - 定义移动参数（`SPEED`, `ACCELERATION`, `FRICTION`）
+- 定义公用角色数据与通用状态逻辑（如 `max_hp` / `current_hp`、受击、击退等）
 - 管理 `facing_dir`（朝向）
 - 提供工具方法（`to_cardinal()`）
 - 持有状态机引用
+- 允许场景通过 `@export` 覆写初始数值，但共享行为实现应优先放在 `BasicCharacter`
 
 子类实现：
 - `get_input_direction()` — 获取输入/AI 方向
 - `play_animation()` — 播放动画
 - 可选：`find_target()`、`start_chase()` 等敌人特有方法
+
+约定：
+- 若要增加玩家与敌人都能复用的状态逻辑，优先写在共享的 `Script/basic_character.gd`
+- 只有当玩家/敌人确实需要不同表现时，才在各自脚本中覆写对应方法
 
 ### 状态层规则
 

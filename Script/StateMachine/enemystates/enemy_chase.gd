@@ -39,6 +39,10 @@ func PhysicsProcess(delta: float) -> void:
 			character.global_position += push_away.normalized() * (stop_distance - dist)
 
 		character.velocity = Vector2.ZERO
+		if state_machine.can_change_to("attack"):
+			state_machine.change_state("attack")
+			return
+
 		character.play_animation(character.facing_dir, "idle")
 		return
 

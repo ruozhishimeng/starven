@@ -31,6 +31,10 @@ func play_animation(direction: Vector2, prefix: String) -> void:
 	state_machine.play_directional_animation(direction, prefix)
 
 
+func set_current_health(value: int, source: Node = null) -> void:
+	super.set_current_health(value, source)
+
+
 ## ============================================
 ## 其他
 ## ============================================

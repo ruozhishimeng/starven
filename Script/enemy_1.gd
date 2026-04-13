@@ -7,6 +7,10 @@ extends BasicCharacter
 @export var detect_radius := 300.0   ## 索敌半径（触发追击）
 @export var lose_radius := 1000.0     ## 丢失半径（停止追击），需 >= detect_radius
 @export var chase_contact_buffer := 4.0 ## 追击停距缓冲，避免贴着玩家持续顶住
+@export var wander_radius := 64.0     ## 未索敌时的活动半径（围绕初始/刷新位置）
+@export var idle_time_min := 0.8      ## 闲逛前最短待机时间
+@export var idle_time_max := 1.8      ## 闲逛前最长待机时间
+@export var wander_arrive_distance := 6.0 ## 到达随机目标点的判定距离
 
 var is_chasing := false              ## 当前是否处于追击状态
 
@@ -14,9 +18,16 @@ var is_chasing := false              ## 当前是否处于追击状态
 @onready var body_collision_shape: CollisionShape2D = $CollisionShape2D
 
 var _body_collision_radius := 0.0
+var _wander_origin := Vector2.ZERO
+var _wander_target := Vector2.ZERO
+var _idle_time_left := 0.0
+var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
 	SPEED = 75.0
+	_rng.randomize()
+	_wander_origin = global_position
+	_wander_target = _wander_origin
 	_body_collision_radius = _get_collision_radius_from_shape(body_collision_shape)
 	super._ready()
 
@@ -53,6 +64,10 @@ func play_animation(direction: Vector2, prefix: String) -> void:
 	anim.play(prefix + "_" + suffix)
 
 
+func set_current_health(value: int, source: Node = null) -> void:
+	super.set_current_health(value, source)
+
+
 ## ============================================
 ## 敌人索敌逻辑
 ## ============================================
@@ -83,9 +98,45 @@ func stop_chase() -> void:
 	is_chasing = false
 
 
+func handle_death_finished() -> void:
+	stop_chase()
+	queue_free()
+
+
 ## 获取追击停距（双方本体半径 + 额外缓冲）
 func get_chase_stop_distance(target: Node2D) -> float:
 	return _body_collision_radius + _get_target_collision_radius(target) + chase_contact_buffer
+
+
+func enter_wander_idle() -> void:
+	_idle_time_left = _rng.randf_range(idle_time_min, maxf(idle_time_min, idle_time_max))
+
+
+func should_start_wander(delta: float) -> bool:
+	_idle_time_left = maxf(_idle_time_left - delta, 0.0)
+	return _idle_time_left <= 0.0
+
+
+func start_wander() -> void:
+	if wander_radius <= 0.0:
+		_wander_target = _wander_origin
+		return
+
+	var angle := _rng.randf_range(0.0, TAU)
+	var distance := _rng.randf_range(0.0, wander_radius)
+	_wander_target = _wander_origin + Vector2.RIGHT.rotated(angle) * distance
+
+
+func get_wander_direction() -> Vector2:
+	var to_target := _wander_target - global_position
+	if to_target.length() <= wander_arrive_distance:
+		return Vector2.ZERO
+
+	return to_target.normalized()
+
+
+func has_reached_wander_target() -> bool:
+	return global_position.distance_to(_wander_target) <= wander_arrive_distance
 
 
 func _get_target_collision_radius(target: Node2D) -> float:
